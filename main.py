@@ -1,33 +1,45 @@
+import asyncio
+import os
+from google.api_core.exceptions import DeadlineExceeded, ServiceUnavailable
 from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 
-PROJECT_ID = "sg1708-cad-centr-scbp-scug-dev"
+PROJECT_ID = os.getenv("PROJECT_ID")
 
 
-def update_data(key: str, new_key: str):
-    db = firestore.Client(project=PROJECT_ID)
+async def update_data(key: str, new_key: str):
+    db = firestore.AsyncClient(project=PROJECT_ID)
 
     contacts_ref = db.collection_group("Contacts")
-
     query = contacts_ref. \
-        where(
-        filter=FieldFilter("ct_type", "==", key)
-    )
+        where(filter=FieldFilter("ct_type", "==", key))
 
     docs = query.stream()
-    print('starting')
     qty = 0
-    for doc in docs:
+
+    await doc_runners(docs, new_key, qty)
+
+
+async def doc_runners(docs, new_key, qty):
+    async for doc in docs:
         qty += 1
         if qty % 100 == 0:
             print(f"updating {qty}")
             print(f"Updating doc {doc.id} => {doc.to_dict()}")
-
         doc.reference.update({"ct_type": new_key})
 
-    print('end')
 
-
-if __name__ == "__main__":
-    #update_data("EMAIl", "E-mail")
-    update_data("PHONE", "Telefone")
+run = True
+while run:
+    try:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(
+            update_data("PHONE", "Telefone")
+        )
+        run = False
+    except DeadlineExceeded:
+        print("error but restarting again...")
+        pass
+    except ServiceUnavailable:
+        print("error but restarting again...")
+        pass
