@@ -1,4 +1,4 @@
-# Firestore Field Updater
+# Firestore Field Updater Script
 
 ### Purpose
 
